@@ -1,0 +1,145 @@
+import sqlite3
+
+DB_NAME = 'expense_tracker.db'
+
+def connect_db():
+    return sqlite3.connect(DB_NAME)
+def initialize_db():
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                amount REAL NOT NULL,
+                category TEXT NOT NULL,
+                description TEXT,
+                date TEXT NOT NULL 
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+from datetime import datetime
+def format_currency(amount):
+    return f"${amount:,.2f}"
+def validate_date(date_str):
+    try:
+
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+import sys
+from datetime import datetime
+import csv
+initialize_db()
+def add_expense():
+    try:
+        amount = float(input("Amount: $"))
+        category = input("Category (e.g., Food, Transport): ")
+        description = input("Description (optional): ").strip()
+        date = input("Date (YYYY-MM-DD, default today): ").strip() 
+        if not date:
+            date = datetime.now().strftime("%Y-%m-%d")
+        elif not validate_date(date):
+            print("Invalid date format. Please use YYYY-MM-DD.")
+            return
+        with connect_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO expenses (amount, category, description, date)
+                VALUES (?, ?, ?, ?)
+            ''', (amount, category, description, date))
+            conn.commit()
+            print("Expense added successfully.")
+    except ValueError:
+        print("Invalid input. Please enter numeric values for amount.")
+
+def view_expenses():
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM expenses ORDER BY date DESC')
+        rows = cursor.fetchall()
+        if not rows:
+            print("No expenses found.")
+            return
+        for row in rows:
+            print(f"ID: {row[0]}, Amount: {format_currency(row[1])}, Category: {row[2]}, Description: {row[3]}, Date: {row[4]}")
+def total_by_category():
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT category, SUM(amount) FROM expenses
+            GROUP BY category
+        ''')
+        rows = cursor.fetchall()
+        for cat, total in rows:
+            print(f"Category: {cat}, Total: {format_currency(total)}")
+def total_by_month():
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT SUBSTR(date, 1, 7) AS month, SUM(amount) FROM expenses
+            GROUP BY month
+        ''')
+        rows = cursor.fetchall()
+        for month, total in rows:
+            print(f"Month: {month}, Total: {format_currency(total)}")
+def delete_expense():
+    view_expenses()
+    try:
+        expense_id = int(input("Enter the ID of the expense to delete: "))
+        with connect_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM expenses WHERE id = ?', (expense_id,))
+            conn.commit()
+            print("Expense deleted successfully.")
+    except ValueError:
+        print("Invalid ID.")
+def export_to_csv():
+    with connect_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT * FROM expenses')
+        rows = cursor.fetchall()
+        with open('expenses.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['ID', 'Amount', 'Category', 'Description', 'Date'])
+            writer.writerows(rows)
+    print("Expenses exported to expenses.csv successfully.")
+
+
+def main():
+    menu = """
+    EXPENSE TRACKER
+    ---------------------
+    1. Add Expense
+    2. View Expenses
+    3. Total by Category
+    4. Total by Month
+    5. Delete Expense
+    6. Export to CSV
+    7. Exit
+    ---------------------
+    """
+    while True:
+        print(menu)
+        choice = input("Select an option(1-7): ")
+        if choice == "1":
+            add_expense()
+        elif choice == "2":
+            view_expenses()
+        elif choice == "3":
+            total_by_category()
+        elif choice == "4":
+            total_by_month()
+        elif choice == "5":
+            delete_expense()
+        elif choice == "6":
+            export_to_csv()
+        elif choice == "7":
+            sys.exit()
+        else:
+            print("Invalid choice. Please select a valid option.")
+if __name__ == "__main__":
+    main()
+    

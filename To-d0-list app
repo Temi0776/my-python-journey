@@ -1,0 +1,140 @@
+import pickle
+from datetime import datetime
+import threading
+import time
+import hashlib
+import os
+tasks = []
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+def check_password():
+    if not os.path.exists('password.txt'):
+        print('No password set. Please set a password first.')
+        new_pw = input('Set a new password: ')
+        with open('password.txt', 'w') as f:
+            f.write(hash_password(new_pw))
+        print('Password saved! Restart the application.')
+        exit()
+    else:
+        pw = input('Enter password to access your to-do list: ')
+        with open('password.txt', 'r') as f:
+            saved_pw = f.read()
+            if hash_password(pw) != saved_pw:
+                print('Incorrect password. Exiting...')
+                exit()
+    
+class Task:
+    def __init__(self, title, description, deadline, reminder_time, category='General'):
+        self.title = title
+        self.description = description
+        self.deadline = deadline
+        self.reminder_time = reminder_time
+        self.category = category
+        self.completed = False
+
+    def __str__(self):
+        status = 'Completed' if self.completed else 'Pending'
+        return (f'[{status}] ({self.category}) {self.title}'
+                f'(Due: {self.deadline.strftime("%Y-%m-%d %H:%M")}, '
+                f'Reminder: {self.reminder_time.strftime("%Y-%m-%d %H:%M")})\n {self.description}')
+
+
+def save_tasks():
+    with open('tasks.pkl', 'wb') as f:
+        pickle.dump(tasks, f)
+
+def load_tasks():
+    global tasks
+    if os.path.exists('tasks.pkl'):
+        with open('tasks.pkl', 'rb') as f:
+            tasks = pickle.load(f)
+
+def add_task():
+    title = input('Enter task title: ')
+    description = input('Enter task description: ')
+    deadline = input('Enter task deadline (YYYY-MM-DD HH:MM): ')
+    reminder = input('Enter reminder time (YYYY-MM-DD HH:MM): ')
+    category = input('Enter task category (default: General): ') or 'General'
+    try:
+        deadline_dt = datetime.strptime(deadline, '%Y-%m-%d %H:%M')
+        reminder_dt = datetime.strptime(reminder, '%Y-%m-%d %H:%M')
+        task = Task(title, description, deadline_dt, reminder_dt, category)
+        tasks.append(task)
+        print('Task added!\n')
+    except ValueError:
+        print('Invalid date format. Please try again.\n')
+
+def list_tasks():
+    if not tasks:
+        print('No tasks available.\n')
+    else:
+        for i, task in enumerate(tasks, 1):
+            print(f'Task {i}: {task}')
+
+def mark_complete():
+    list_tasks()
+    try:
+        choice = int(input('Enter task number to mark as complete: '))
+        if 1 <= choice <= len(tasks):
+            tasks[choice - 1].completed = True
+            print('Task marked as complete!\n')
+        else:
+            print('Invalid task number.\n')
+    except ValueError:
+        print('Invalid input. Please enter a number.\n')
+
+def edit_task():
+    list_tasks()
+    try:
+        choice = int(input('Enter task number to edit: '))
+        if 1 <= choice <= len(tasks):
+            task = tasks[choice - 1]
+            print(f'Editing Task: {task.title}')
+            new_title = input(f'New title (leave blank to keep "{task.title}"): ') or task.title
+            new_description = input(f'New description (leave blank to keep current): ') or task.description
+            new_deadline = input(f'New deadline (leave blank to keep {task.deadline.strftime("%Y-%m-%d %H:%M")}): ')
+            new_reminder = input(f'New reminder time (leave blank to keep {task.reminder_time.strftime("%Y-%m-%d %H:%M")}): ')
+            new_category = input(f'New category (leave blank to keep "{task.category}"): ') or task.category
+            task.title = new_title
+            task.description = new_description
+            if new_deadline:
+                try:
+                    task.deadline = datetime.strptime(new_deadline, '%Y-%m-%d %H:%M')
+                except ValueError:
+                    print('Invalid date format. keeping old deadline.')
+            if new_reminder:
+                try:
+                    task.reminder_time = datetime.strptime(new_reminder, '%Y-%m-%d %H:%M')
+                except ValueError:
+                    print('Invalid reminder format. keeping old reminder.')
+            task.category = new_category
+            print('Task updated!\n')
+        else:
+            print('Invalid task number.\n')
+    except ValueError:
+        print('Please enter a valid number.\n')
+def edit_task():
+    list_tasks()
+    try:
+        choice = int(input('Enter task number to edit: '))
+        if 1 <= choice <= len(tasks):
+            task = tasks[choice - 1]
+            print(f'Editing Task: {task.title}')
+            new_title = input(f'New title (leave blank to keep "{task.title}"): ') or task.title
+            new_description = input(f'New description (leave blank to keep current): ') or task.description
+            new_deadline = input(f'New deadline (leave blank to keep {task.deadline.strftime("%Y-%m-%d %H:%M")}): ')
+            new_reminder = input(f'New reminder time (leave blank to keep {task.reminder_time.strftime("%Y-%m-%d %H:%M")}): ')
+            new_category = input(f'New category (leave blank to keep "{task.category}"): ') or task.category
+            task.title = new_title
+            task.description = new_description
+            if new_deadline:
+                try:
+                    task.deadline = datetime.strptime(new_deadline, '%Y-%m-%d %H:%M')
+                except ValueError:
+                    print('Invalid date format. keeping old deadline.')
+            if new_reminder:
+                try:
+                    task.reminder_time = datetime.strptime(new_reminder, '%Y-%m-%d %H:%M')
+                except ValueError:
+                    print('Invalid reminder format. keeping old reminder.')
+            task.category = new_category
